@@ -624,7 +624,8 @@ class ApiCF(ApiParent, QObject):
             self.controller.dock_dialog(dlg_cf)
             self.controller.dlg_docker.dlg_closed.connect(partial(self.manage_docker_close))
             self.controller.dlg_docker.setWindowTitle(title)
-            btn_cancel.clicked.connect(lambda: self.controller.dlg_docker.dlg_closed.emit())
+            btn_cancel.setVisible(False)
+            btn_accept.setVisible(False)
         else:
             dlg_cf.dlg_closed.connect(self.roll_back)
             dlg_cf.dlg_closed.connect(partial(self.resetRubberbands))
@@ -632,9 +633,9 @@ class ApiCF(ApiParent, QObject):
             dlg_cf.dlg_closed.connect(partial(self.set_vdefault_edition))
             dlg_cf.key_pressed.connect(partial(self.close_dialog, dlg_cf))
 
-        btn_cancel.clicked.connect(partial(self.close_dialog, dlg_cf))
-        btn_cancel.clicked.connect(self.roll_back)
-        btn_accept.clicked.connect(partial(self.manage_accept, dlg_cf, action_edit, result, fid, new_feature, self.my_json, True))
+            btn_cancel.clicked.connect(partial(self.close_dialog, dlg_cf))
+            btn_cancel.clicked.connect(self.roll_back)
+            btn_accept.clicked.connect(partial(self.accept_from_btn, dlg_cf, action_edit, result, fid, new_feature, self.my_json, True, True))
         dlg_cf.dlg_closed.connect(self.disconect_signals)
 
         # Set title
@@ -750,31 +751,38 @@ class ApiCF(ApiParent, QObject):
         except RuntimeError:
             pass
 
-    def manage_accept(self, dialog, action_edit, result, fid, new_feature, my_json, ask=True):
-        # Only ask when the edition is closed from our form, since if it is closed from qgis, it will ask
-        if ask:
-            msg = 'Are you sure to save this feature?'
-            answer = self.controller.ask_question(msg, "Save feature", None, parameter=fid)
-            if not answer:
-                self.check_actions(action_edit, True)
-                return
+
+    def manage_edition(self, dialog, action_edit, result, fid, new_feature=None, my_json=None):
+
+        if not action_edit.isChecked():
+            save = self.ask_for_save(action_edit, fid)
+            if save:
+                self.manage_accept(dialog, action_edit, result, new_feature, my_json, False)
+        else:
+            self.check_actions(action_edit, True)
+            self.enable_all(dialog, result)
+            self.enable_actions(dialog, True)
+
+
+    def accept_from_btn(self, dialog, action_edit, result, fid, new_feature, my_json):
+
+        if not action_edit.isChecked():
+            self.close_dialog(dialog)
+            return
+        else:
+            save = self.ask_for_save(action_edit, fid)
+        if save:
+            self.manage_accept(dialog, action_edit, result, new_feature, my_json, True)
+
+
+    def manage_accept(self, dialog, action_edit, result, new_feature, my_json, close_dlg):
         self.get_last_value()
-        status = self.accept(dialog, self.complet_result[0], my_json, close_dialog=False, new_feature=new_feature)
+        status = self.accept(dialog, self.complet_result[0], my_json, close_dialog=close_dlg, new_feature=new_feature)
         self.check_actions(action_edit, True)
         if status is not False:  # Commit succesfull or dialog closed
             self.check_actions(action_edit, False)
             self.disable_all(dialog, result, False)
             self.enable_actions(dialog, False)
-
-
-    def manage_edition(self, dialog, action_edit, result, fid, new_feature=None, my_json=None):
-
-        if not action_edit.isChecked():
-            self.manage_accept(dialog, action_edit, result, fid, new_feature, my_json, True)
-        else:
-            self.check_actions(action_edit, True)
-            self.enable_all(dialog, result)
-            self.enable_actions(dialog, True)
 
             
     def stop_editing(self, dialog, action_edit, result, layer, fid, my_json, new_feature=None):
@@ -789,7 +797,10 @@ class ApiCF(ApiParent, QObject):
             self.disable_all(dialog, result, False)
             self.enable_actions(dialog, False)
         else:
-            self.manage_accept(dialog, action_edit, result, fid, new_feature, my_json, False)
+            save = self.ask_for_save(action_edit, fid)
+            if save:
+                self.manage_accept(dialog, action_edit, result, new_feature, my_json, False)
+
 
     def start_editing(self, dialog, action_edit, result, layer):
 
@@ -802,6 +813,15 @@ class ApiCF(ApiParent, QObject):
         layer.editingStarted.connect(self.fct_start_editing)
         layer.editingStopped.connect(self.fct_stop_editing)
 
+
+    def ask_for_save(self, action_edit, fid):
+
+        msg = 'Are you sure to save this feature?'
+        answer = self.controller.ask_question(msg, "Save feature", None, parameter=fid)
+        if not answer:
+            self.check_actions(action_edit, True)
+            return False
+        return True
 
     def roll_back(self):
         """ Discard changes in current layer """
@@ -1107,14 +1127,15 @@ class ApiCF(ApiParent, QObject):
         if self.new_feature_id is not None:
             for k, v in list(_json.items()):
                 if k in parent_fields:
+                    # print(f"k:{k}, v:{v}")
                     new_feature.setAttribute(k, v)
                     _json.pop(k, None)
+
             if not self.layer_new_feature.isEditable():
                 self.layer_new_feature.startEditing()
             self.layer_new_feature.updateFeature(new_feature)
 
             status = self.layer_new_feature.commitChanges()
-            self.layer_new_feature.startEditing()
             if status is False:
                 error = self.layer_new_feature.commitErrors()
                 self.controller.show_warning(f"{error}")
@@ -1125,8 +1146,10 @@ class ApiCF(ApiParent, QObject):
             self.controller.is_inserting = False
             my_json = json.dumps(_json)
             if my_json == '' or str(my_json) == '{}':
-                if self.controller.dlg_docker:
-                    self.manage_docker_close()
+                # if self.controller.dlg_docker:
+                #     self.manage_docker_close()
+                if close_dialog:
+                    self.close_dialog(dialog)
                 return True
 
             feature = f'"id":"{new_feature.attribute(id_name)}", '
@@ -1135,7 +1158,6 @@ class ApiCF(ApiParent, QObject):
         else:
             my_json = json.dumps(_json)
             feature = f'"id":"{self.feature_id}", '
-
         feature += f'"featureType":"{self.feature_type}", '
         feature += f'"tableName":"{p_table_id}"'
         extras = f'"fields":{my_json}, "reload":"{fields_reload}"'

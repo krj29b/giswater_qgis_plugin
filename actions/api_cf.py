@@ -635,7 +635,7 @@ class ApiCF(ApiParent, QObject):
 
             btn_cancel.clicked.connect(partial(self.close_dialog, dlg_cf))
             btn_cancel.clicked.connect(self.roll_back)
-            btn_accept.clicked.connect(partial(self.accept_from_btn, dlg_cf, action_edit, result, fid, new_feature, self.my_json, True, True))
+            btn_accept.clicked.connect(partial(self.accept_from_btn, dlg_cf, action_edit, result, fid, new_feature, self.my_json))
         dlg_cf.dlg_closed.connect(self.disconect_signals)
 
         # Set title
@@ -754,10 +754,19 @@ class ApiCF(ApiParent, QObject):
 
     def manage_edition(self, dialog, action_edit, result, fid, new_feature=None, my_json=None):
 
+        self.get_last_value()
         if not action_edit.isChecked():
+            if str(my_json) == '{}':
+                self.check_actions(action_edit, False)
+                self.disable_all(dialog, result, False)
+                self.enable_actions(dialog, False)
+                return
             save = self.ask_for_save(action_edit, fid)
             if save:
                 self.manage_accept(dialog, action_edit, result, new_feature, my_json, False)
+            elif self.new_feature_id is not None:
+                print(f"self.new_feature_id-->{self.new_feature_id}")
+                self.close_dialog(dialog)
         else:
             self.check_actions(action_edit, True)
             self.enable_all(dialog, result)
@@ -765,8 +774,7 @@ class ApiCF(ApiParent, QObject):
 
 
     def accept_from_btn(self, dialog, action_edit, result, fid, new_feature, my_json):
-
-        if not action_edit.isChecked():
+        if str(my_json) == '{}' or not action_edit.isChecked():
             self.close_dialog(dialog)
             return
         else:

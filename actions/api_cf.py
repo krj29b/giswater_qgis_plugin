@@ -583,6 +583,7 @@ class ApiCF(ApiParent, QObject):
             else:
                 self.disable_all(dlg_cf, result, False)
 
+        self.iface.mainWindow().findChild(QAction, 'mActionToggleEditing').toggled.connect(partial(self.block_action_edit, dlg_cf, action_edit, result, layer, fid, my_json, new_feature))
         # We assign the function to a global variable,
         # since as it receives parameters we will not be able to disconnect the signals
         self.fct_start_editing = lambda: self.start_editing(dlg_cf, action_edit, complet_result[0]['body']['data'], layer)
@@ -651,6 +652,15 @@ class ApiCF(ApiParent, QObject):
         dlg_cf.setWindowTitle(title)
 
         return self.complet_result, dlg_cf
+
+
+    def block_action_edit(self, dialog, action_edit, result, layer, fid, my_json, new_feature):
+
+        if self.new_feature_id is not None:
+            self.iface.mainWindow().findChild(QAction, 'mActionToggleEditing').blockSignals(True)
+            self.stop_editing(dialog, action_edit, result, layer, fid, my_json, new_feature)
+            self.iface.mainWindow().findChild(QAction, 'mActionToggleEditing').blockSignals(False)
+
 
 
     def close_dialog(self, dlg=None):
@@ -790,16 +800,16 @@ class ApiCF(ApiParent, QObject):
 
 
     def manage_accept(self, dialog, action_edit, result, new_feature, my_json, close_dlg):
+        action_edit.blockSignals(True)
         status = self.accept(dialog, self.complet_result[0], my_json, close_dialog=close_dlg, new_feature=new_feature)
-        self.check_actions(action_edit, True)
         if status is not False:  # Commit succesfull or dialog closed
             self.check_actions(action_edit, False)
             self.disable_all(dialog, result, False)
             self.enable_actions(dialog, False)
+        action_edit.blockSignals(False)
 
-            
+
     def stop_editing(self, dialog, action_edit, result, layer, fid, my_json, new_feature=None):
-
         if my_json == '' or str(my_json) == '{}':
             self.disconect_signals()
             # Use commitChanges just for closse edition
@@ -835,6 +845,7 @@ class ApiCF(ApiParent, QObject):
             self.check_actions(action_edit, True)
             return False
         return True
+
 
     def roll_back(self):
         """ Discard changes in current layer """

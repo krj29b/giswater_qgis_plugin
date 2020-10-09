@@ -630,7 +630,6 @@ class ApiCF(ApiParent, QObject):
             dlg_cf.dlg_closed.connect(self.roll_back)
             dlg_cf.dlg_closed.connect(partial(self.resetRubberbands))
             dlg_cf.dlg_closed.connect(partial(self.save_settings, dlg_cf))
-            dlg_cf.dlg_closed.connect(partial(self.set_vdefault_edition))
             dlg_cf.key_pressed.connect(partial(self.close_dialog, dlg_cf))
             btn_cancel.clicked.connect(partial(self.close_dialog, dlg_cf))
         btn_accept.clicked.connect(partial(self.accept_from_btn, dlg_cf, action_edit, result, new_feature, self.my_json))
@@ -683,7 +682,6 @@ class ApiCF(ApiParent, QObject):
 
         self.roll_back()
         self.resetRubberbands()
-        self.set_vdefault_edition()
         self.controller.close_docker()
         self.disconect_signals()
 
@@ -726,14 +724,6 @@ class ApiCF(ApiParent, QObject):
         expr_filter = f"{self.field_id} = '{self.feature_id}'"
         self.feature = self.get_feature_by_expr(self.layer, expr_filter)
         return self.feature
-
-
-    def set_vdefault_edition(self):
-
-        if 'toggledition' in self.complet_result[0]['body']:
-            force_open = self.complet_result[0]['body']['toggledition']
-            if not force_open and self.iface.mainWindow().findChild(QAction, 'mActionToggleEditing').isChecked():
-                self.iface.mainWindow().findChild(QAction, 'mActionToggleEditing').trigger()
 
 
     def get_last_value(self):

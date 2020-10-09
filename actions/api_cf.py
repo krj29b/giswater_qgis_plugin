@@ -785,24 +785,22 @@ class ApiCF(ApiParent, QObject):
             self.enable_actions(dialog, True)
 
 
-    def accept_from_btn(self, dialog, action_edit, result, fid, new_feature, my_json):
+    def accept_from_btn(self, dialog, action_edit, result, new_feature, my_json):
         if not action_edit.isChecked():
             self.close_dialog(dialog)
             return
-        else:
-            save = self.ask_for_save(action_edit, fid)
-        if save:
-            self.manage_accept(dialog, action_edit, result, new_feature, my_json, True)
+
+        self.manage_accept(dialog, action_edit, result, new_feature, my_json, True)
 
 
     def manage_accept(self, dialog, action_edit, result, new_feature, my_json, close_dlg):
         action_edit.blockSignals(True)
         status = self.accept(dialog, self.complet_result[0], my_json, close_dialog=close_dlg, new_feature=new_feature)
-        if status is not False:  # Commit succesfull or dialog closed
+        if status is True:  # Commit succesfull and dialog keep opened
             self.check_actions(action_edit, False)
             self.disable_all(dialog, result, False)
             self.enable_actions(dialog, False)
-        action_edit.blockSignals(False)
+            action_edit.blockSignals(False)
 
 
     def stop_editing(self, dialog, action_edit, result, layer, fid, my_json, new_feature=None):
@@ -1177,6 +1175,7 @@ class ApiCF(ApiParent, QObject):
         else:
             my_json = json.dumps(_json)
             feature = f'"id":"{self.feature_id}", '
+
         feature += f'"featureType":"{self.feature_type}", '
         feature += f'"tableName":"{p_table_id}"'
         extras = f'"fields":{my_json}, "reload":"{fields_reload}"'
@@ -1213,6 +1212,7 @@ class ApiCF(ApiParent, QObject):
                 self.manage_docker_close()
             self.close_dialog(dialog)
             return None
+        return True
 
 
     def get_scale_zoom(self):

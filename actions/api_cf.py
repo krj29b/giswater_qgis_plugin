@@ -626,9 +626,6 @@ class ApiCF(ApiParent, QObject):
             self.controller.dlg_docker.dlg_closed.connect(partial(self.manage_docker_close))
             self.controller.dlg_docker.setWindowTitle(title)
             btn_cancel.clicked.connect(partial(self.manage_docker_close))
-            if self.new_feature_id is None:
-                btn_cancel.setVisible(False)
-                btn_accept.setVisible(False)
         else:
             dlg_cf.dlg_closed.connect(self.roll_back)
             dlg_cf.dlg_closed.connect(partial(self.resetRubberbands))
@@ -636,7 +633,7 @@ class ApiCF(ApiParent, QObject):
             dlg_cf.dlg_closed.connect(partial(self.set_vdefault_edition))
             dlg_cf.key_pressed.connect(partial(self.close_dialog, dlg_cf))
             btn_cancel.clicked.connect(partial(self.close_dialog, dlg_cf))
-        btn_accept.clicked.connect(partial(self.accept_from_btn, dlg_cf, action_edit, result, fid, new_feature, self.my_json))
+        btn_accept.clicked.connect(partial(self.accept_from_btn, dlg_cf, action_edit, result, new_feature, self.my_json))
         dlg_cf.dlg_closed.connect(self.disconect_signals)
 
         # Set title
@@ -660,7 +657,6 @@ class ApiCF(ApiParent, QObject):
             self.iface.mainWindow().findChild(QAction, 'mActionToggleEditing').blockSignals(True)
             self.stop_editing(dialog, action_edit, result, layer, fid, my_json, new_feature)
             self.iface.mainWindow().findChild(QAction, 'mActionToggleEditing').blockSignals(False)
-
 
 
     def close_dialog(self, dlg=None):
